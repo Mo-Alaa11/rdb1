@@ -1,0 +1,140 @@
+// This is your Prisma schema file for the Student Study Task Management System
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - stores student account information
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  academicLevel String?  // e.g., "Undergraduate", "Graduate"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  subjects     Subject[]
+  tasks        Task[]
+  notes        Note[]
+  studySessions StudySession[]
+  notifications Notification[]
+  
+  @@map("users")
+}
+
+// Subject model - represents courses/modules
+model Subject {
+  id          String   @id @default(uuid())
+  name        String
+  code        String?  // e.g., "CS101"
+  color       String   @default("#3B82F6") // For UI categorization
+  description String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  tasks Task[]
+  notes Note[]
+  
+  @@map("subjects")
+}
+
+// Task model - main study tasks
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  priority    Priority @default(MEDIUM)
+  status      TaskStatus @default(PENDING)
+  dueDate     DateTime?
+  completedAt DateTime?
+  estimatedMinutes Int?
+  actualMinutes   Int?
+  subjectId   String?
+  subject     Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  notes Note[]
+  
+  @@map("tasks")
+}
+
+// Enum for task priority
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// Enum for task status
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// Note model - for study notes linked to tasks/subjects
+model Note {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   // Rich text content stored as markdown
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("notes")
+}
+
+// StudySession model - tracks time spent studying
+model StudySession {
+  id          String   @id @default(uuid())
+  startTime   DateTime
+  endTime     DateTime?
+  durationMinutes Int?
+  subjectId   String?
+  taskId      String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  
+  @@map("study_sessions")
+}
+
+// Notification model - for reminders and alerts
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  read      Boolean  @default(false)
+  scheduledFor DateTime?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@map("notifications")
+}
+
+enum NotificationType {
+  INFO
+  REMINDER
+  DEADLINE
+  ACHIEVEMENT
+}
